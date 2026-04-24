@@ -2,7 +2,8 @@
 import os, sys, zipfile, subprocess, winreg, urllib.request, tempfile
 import pyaudiowpatch as pyaudio
 
-FELIXX = "Felixx"
+SONIXX = "Sonixx"
+SONIXX_FULL = "Sonixx by Felix-au"
 VB_URL = "https://download.vb-audio.com/Download_CABLE/VBCABLE_Driver_Pack43.zip"
 
 
@@ -79,8 +80,8 @@ def extract_and_install(zip_path):
     return False
 
 
-def rename_to_felixx():
-    """Rename VB-Cable Output capture device to 'Felixx' in registry."""
+def rename_to_sonixx():
+    """Rename VB-Cable Output capture device to 'Sonixx' in registry."""
     try:
         base = r"SOFTWARE\Microsoft\Windows\CurrentVersion\MMDevices\Audio\Capture"
         prop_name = "{a45c254e-df1c-4efd-8020-67d146a850e0},2"
@@ -94,20 +95,21 @@ def rename_to_felixx():
                     val, vtype = winreg.QueryValueEx(pk, prop_name)
                     val_str = str(val).lower()
                     
-                    # Check if already named Felixx
-                    if str(val) == FELIXX:
+                    # Check if already named Sonixx
+                    if val == SONIXX:
                         winreg.CloseKey(pk)
                         winreg.CloseKey(key)
-                        return True, "Already renamed to Felixx."
+                        return True, f"Already renamed to {SONIXX}."
 
-                    if "cable" in val_str:
+                    # Identify the device if it contains 'cable' or the old name 'felixx'
+                    if "cable" in val_str or "felixx" in val_str:
                         winreg.CloseKey(pk)
                         pk = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, props_path, 0,
                                             winreg.KEY_SET_VALUE | winreg.KEY_READ)
-                        winreg.SetValueEx(pk, prop_name, 0, vtype, FELIXX)
+                        winreg.SetValueEx(pk, prop_name, 0, vtype, SONIXX)
                         winreg.CloseKey(pk)
                         winreg.CloseKey(key)
-                        return True, "Renamed to Felixx! Restart audio apps to see the change."
+                        return True, f"Renamed to {SONIXX}! Restart audio apps to see the change."
                 except FileNotFoundError:
                     pass
                 winreg.CloseKey(pk)

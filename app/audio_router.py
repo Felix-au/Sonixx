@@ -25,7 +25,7 @@ class AppAudioSource:
         self._level_lock = threading.Lock()
         self._lock = threading.Lock()
         self.buffer = None
-        self.pipe_name = fr'\\.\pipe\felixx_app_{self.pid}_{id(self)}'
+        self.pipe_name = fr'\\.\pipe\sonixx_app_{self.pid}_{id(self)}'
         self._pipe = None
         self._pipe_thread = None
         self._running = False

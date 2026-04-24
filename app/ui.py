@@ -1,11 +1,22 @@
-"""Felixx UI - Shows individual apps like Windows Sound Settings."""
+"""Sonixx UI - Shows individual apps like Windows Sound Settings."""
 import customtkinter as ctk
-import threading, time, webbrowser
+import threading, time, webbrowser, os
 import pyaudiowpatch as pyaudio
+from PIL import Image
 from app.driver import (is_cable_installed, get_cable_output_device, download_vbcable,
-                         extract_and_install, rename_to_felixx, find_wasapi, FELIXX)
+                         extract_and_install, rename_to_sonixx, find_wasapi, SONIXX, SONIXX_FULL)
 from app.audio_router import AudioRouter
 from process_audio_capture import ProcessAudioCapture
+import sys
+
+def resource_path(relative_path):
+    """ Get absolute path to resource, works for dev and for PyInstaller """
+    try:
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(".")
+    return os.path.join(base_path, relative_path)
+
 
 P = {"bg":"#080810","card":"#101018","card2":"#181824","hover":"#222236",
      "sel":"#1c1c3c","accent":"#7c6cf0","accent2":"#a99dff",
@@ -63,7 +74,7 @@ class App(ctk.CTk):
     def __init__(self):
         super().__init__()
         ctk.set_appearance_mode("dark")
-        self.title(f"{FELIXX} — Virtual Audio Router")
+        self.title(SONIXX_FULL)
         
         # Calculate 80% of screen height and width
         sw = self.winfo_screenwidth()
@@ -78,6 +89,22 @@ class App(ctk.CTk):
         self.geometry(f"{w}x{h}+{x}+{y}")
         self.minsize(w, h)
         self.configure(fg_color=P["bg"])
+
+        # Set window icon
+        try:
+            icon_p = resource_path("assets/sonixx_logo.ico")
+            if os.path.exists(icon_p):
+                self.iconbitmap(icon_p)
+        except: pass
+
+        # Load profile icons
+        try:
+            gh_img = Image.open(resource_path("assets/github.svg"))
+            self.gh_icon = ctk.CTkImage(gh_img, size=(18, 18))
+            em_img = Image.open(resource_path("assets/email.svg"))
+            self.em_icon = ctk.CTkImage(em_img, size=(18, 18))
+        except:
+            self.gh_icon = self.em_icon = None
         
         # Disable resizing (dragging) but keep Maximize button
         def disable_resize():
@@ -90,6 +117,13 @@ class App(ctk.CTk):
                 ctypes.windll.user32.SetWindowLongW(hwnd, -16, style)
             except: pass
         self.after(100, disable_resize)
+        
+        # Load logo for header
+        try:
+            self.logo_img = ctk.CTkImage(Image.open(resource_path("assets/sonixx_logo.png")), size=(24, 24))
+        except:
+            self.logo_img = None
+
         self.pa = pyaudio.PyAudio(); self.wi = find_wasapi(self.pa)
         self.router = AudioRouter(self.pa)
         self.mic_rows={}; self.app_rows={}
@@ -101,7 +135,7 @@ class App(ctk.CTk):
         for w in self.winfo_children(): w.destroy()
         f=ctk.CTkFrame(self,fg_color=P["card"],corner_radius=20,border_width=1,border_color=P["border"])
         f.place(relx=0.5,rely=0.5,anchor="center",relwidth=0.6,relheight=0.55)
-        ctk.CTkLabel(f,text=f"◉ {FELIXX} Setup",font=("Segoe UI Black",24),text_color=P["accent2"]).pack(pady=(30,10))
+        ctk.CTkLabel(f,text=f"◉ {SONIXX} Setup",font=("Segoe UI Black",24),text_color=P["accent2"]).pack(pady=(30,10))
         ctk.CTkLabel(f,text="A lightweight audio driver (VB-Cable, 2MB, free) is required\nto create the virtual microphone device.",
                      font=("Segoe UI",13),text_color=P["dim"],justify="center").pack(pady=(0,20))
         self.setup_st=ctk.CTkLabel(f,text="",font=("Segoe UI",12),text_color=P["orange"]); self.setup_st.pack(pady=(0,10))
@@ -129,27 +163,55 @@ class App(ctk.CTk):
 
     def _build_main(self):
         for w in self.winfo_children(): w.destroy()
-        self.grid_rowconfigure(1,weight=1); self.grid_columnconfigure(0,weight=1)
+        self.grid_rowconfigure(0, weight=0)
+        self.grid_rowconfigure(1, weight=1)
+        self.grid_rowconfigure(2, weight=0)
+        self.grid_columnconfigure(0, weight=1)
         # Header
         h=ctk.CTkFrame(self,fg_color=P["card"],corner_radius=0,height=50); h.grid(row=0,column=0,sticky="ew")
-        h.grid_columnconfigure(1,weight=1)
-        ctk.CTkLabel(h,text=f"◉ {FELIXX}",font=("Segoe UI Black",20),text_color=P["accent2"]).grid(row=0,column=0,padx=20,pady=11)
+        h.grid_columnconfigure(2,weight=1)
+        
+        if self.logo_img:
+            ctk.CTkLabel(h, text="", image=self.logo_img).grid(row=0, column=0, padx=(20, 0), pady=11)
+            ctk.CTkLabel(h, text=f"{SONIXX}", font=("Segoe UI Black", 20), text_color=P["accent2"]).grid(row=0, column=1, padx=(10, 20), pady=11, sticky="w")
+        else:
+            ctk.CTkLabel(h,text=f"◉ {SONIXX}",font=("Segoe UI Black",20),text_color=P["accent2"]).grid(row=0,column=0,padx=20,pady=11)
+            
         self.status_lbl=ctk.CTkLabel(h,text="● Stopped",font=("Segoe UI Semibold",12),text_color=P["red"])
-        self.status_lbl.grid(row=0,column=1,sticky="e",padx=20)
+        self.status_lbl.grid(row=0,column=2,sticky="e",padx=20)
         # Body
         body=ctk.CTkFrame(self,fg_color="transparent"); body.grid(row=1,column=0,sticky="nsew",padx=14,pady=(8,0))
-        body.grid_columnconfigure(0,weight=3); body.grid_columnconfigure(1,weight=2); body.grid_rowconfigure(0,weight=1)
+        body.grid_columnconfigure(0,weight=1); body.grid_columnconfigure(1,weight=1); body.grid_rowconfigure(0,weight=1)
         self._left(body); self._right(body)
         # Footer
-        ft=ctk.CTkFrame(self,fg_color=P["card"],corner_radius=0,height=28); ft.grid(row=2,column=0,sticky="ew")
-        ft.grid_columnconfigure(0,weight=1)
+        ft=ctk.CTkFrame(self,fg_color=P["card"],corner_radius=0,height=32); ft.grid(row=2,column=0,sticky="ew")
+        ft.pack_propagate(False)
+
         self.foot=ctk.CTkLabel(ft,text="Add sources and press Start",font=("Segoe UI",10),text_color=P["muted"])
-        self.foot.grid(row=0,column=0,padx=14,pady=4,sticky="w")
+        self.foot.pack(side="left", padx=14, pady=6)
+        
+        # Profile section
+        prof = ctk.CTkFrame(ft, fg_color="transparent")
+        prof.pack(side="right", padx=14, pady=4)
+        
+        if self.gh_icon:
+            ctk.CTkButton(prof, text=" Felix-au", image=self.gh_icon, height=24, fg_color="transparent", 
+                          hover_color=P["hover"], corner_radius=6, font=("Segoe UI", 10), text_color=P["dim"],
+                          command=lambda: webbrowser.open("https://github.com/Felix-au")).pack(side="left", padx=4)
+        if self.em_icon:
+            ctk.CTkButton(prof, text=" harshit.soni.23cse@bmu.edu.in", image=self.em_icon, height=24, fg_color="transparent", 
+                          hover_color=P["hover"], corner_radius=6, font=("Segoe UI", 10), text_color=P["dim"],
+                          command=lambda: webbrowser.open("mailto:harshit.soni.23cse@bmu.edu.in")).pack(side="left", padx=4)
+
         self._load_devices()
 
     def _left(self, parent):
         left=ctk.CTkFrame(parent,fg_color=P["card"],corner_radius=14,border_width=1,border_color=P["border"])
-        left.grid(row=0,column=0,sticky="nsew",padx=(0,6)); left.grid_rowconfigure(4,weight=1); left.grid_columnconfigure(0,weight=1)
+        left.grid(row=0,column=0,sticky="nsew",padx=(0,6))
+        left.grid_columnconfigure(0,weight=1)
+        # Give weight to the scrollable lists so they expand
+        left.grid_rowconfigure(1,weight=3) 
+        left.grid_rowconfigure(3,weight=1)
         # Apps section
         ab=ctk.CTkFrame(left,fg_color="transparent"); ab.grid(row=0,column=0,sticky="ew",padx=14,pady=(14,4))
         ab.grid_columnconfigure(0,weight=1)
@@ -158,7 +220,7 @@ class App(ctk.CTk):
                        hover_color=P["hover"],text_color=P["dim"],corner_radius=8,
                        command=self._scan_apps).grid(row=0,column=1,padx=(4,0))
         # App list
-        self.app_scroll=ctk.CTkScrollableFrame(left,fg_color="transparent",scrollbar_button_color=P["border"],height=200)
+        self.app_scroll=ctk.CTkScrollableFrame(left,fg_color="transparent",scrollbar_button_color=P["border"])
         self.app_scroll.grid(row=1,column=0,sticky="nsew",padx=6,pady=(4,4)); self.app_scroll.grid_columnconfigure(0,weight=1)
         self.app_empty=ctk.CTkLabel(self.app_scroll,text="Click Scan to detect apps with audio",font=("Segoe UI",11),text_color=P["muted"])
         self.app_empty.grid(row=0,column=0,pady=20)
@@ -169,26 +231,26 @@ class App(ctk.CTk):
         self.mic_var=ctk.StringVar()
         self.mic_cb=ctk.CTkComboBox(mb,variable=self.mic_var,values=["..."],height=28,font=("Segoe UI",11),
                                      fg_color=P["card2"],border_color=P["border"],button_color=P["accent"],
-                                     dropdown_fg_color=P["card2"],text_color=P["txt"],corner_radius=8,width=300)
-        self.mic_cb.grid(row=0,column=1,padx=(8,4))
+                                     dropdown_fg_color=P["card2"],text_color=P["txt"],corner_radius=8)
+        self.mic_cb.grid(row=0,column=1,padx=(8,4),sticky="ew")
         ctk.CTkButton(mb,text="+ Add",width=55,height=28,font=("Segoe UI Semibold",11),fg_color=P["accent"],
                        hover_color=P["accent2"],corner_radius=8,command=self._add_mic).grid(row=0,column=2)
         # Mic source list
-        self.mic_scroll=ctk.CTkScrollableFrame(left,fg_color="transparent",scrollbar_button_color=P["border"],height=120)
+        self.mic_scroll=ctk.CTkScrollableFrame(left,fg_color="transparent",scrollbar_button_color=P["border"])
         self.mic_scroll.grid(row=3,column=0,sticky="nsew",padx=6,pady=(4,8)); self.mic_scroll.grid_columnconfigure(0,weight=1)
 
     def _right(self, parent):
         r=ctk.CTkFrame(parent,fg_color=P["card"],corner_radius=14,border_width=1,border_color=P["border"])
         r.grid(row=0,column=1,sticky="nsew",padx=(6,0)); r.grid_columnconfigure(0,weight=1)
-        ctk.CTkLabel(r,text="Output → Felixx Virtual Mic",font=("Segoe UI Semibold",14),
+        ctk.CTkLabel(r,text=f"Output → {SONIXX} Virtual Mic",font=("Segoe UI Semibold",14),
                      text_color=P["txt"]).grid(row=0,column=0,sticky="w",padx=16,pady=(16,4))
         cable=get_cable_output_device(self.pa); self._cable_dev=cable
         cn=cable["name"] if cable else "Not found"
         ctk.CTkLabel(r,text=f"Target: {cn}",font=("Segoe UI",11),
                      text_color=P["green"] if cable else P["red"]).grid(row=1,column=0,sticky="w",padx=20,pady=(0,2))
-        ctk.CTkLabel(r,text=f'Select "{FELIXX}" or "CABLE Output" as mic in Valorant/Discord',
+        ctk.CTkLabel(r,text=f'Select "{SONIXX}" or "CABLE Output" as mic in Valorant/Discord',
                      font=("Segoe UI",10),text_color=P["dim"],wraplength=280,anchor="w").grid(row=2,column=0,sticky="w",padx=20,pady=(0,8))
-        self.rename_btn=ctk.CTkButton(r,text=f'Rename to "{FELIXX}" (Admin)',height=28,font=("Segoe UI",11),
+        self.rename_btn=ctk.CTkButton(r,text=f'Rename to "{SONIXX}" (Admin)',height=28,font=("Segoe UI",11),
                        fg_color=P["card2"],hover_color=P["hover"],text_color=P["dim"],corner_radius=8,command=self._rename)
         self.rename_btn.grid(row=3,column=0,sticky="ew",padx=16,pady=(0,8))
         # Loopback device selector
@@ -204,8 +266,8 @@ class App(ctk.CTk):
         # Monitor Mix Toggle
         ctk.CTkFrame(r,fg_color=P["border"],height=1).grid(row=8,column=0,sticky="ew",padx=12,pady=4)
         self.monitor_switch = ctk.CTkSwitch(r, text="Monitor Mix (Hear output)", font=("Segoe UI", 11), text_color=P["dim"],
-                                            progress_color=P["accent"], button_color="#fff", button_hover_color="#ddd",
-                                            command=self._toggle_monitor)
+                                             progress_color=P["accent"], button_color="#fff", button_hover_color="#ddd",
+                                             command=self._toggle_monitor)
         self.monitor_switch.grid(row=9, column=0, sticky="w", padx=18, pady=(6, 2))
 
         # Master vol
@@ -220,6 +282,10 @@ class App(ctk.CTk):
         # Peak
         self.m_peak=ctk.CTkCanvas(r,height=10,bg=P["card"],highlightthickness=0)
         self.m_peak.grid(row=13,column=0,sticky="ew",padx=18,pady=(8,4))
+        
+        # Spacer to push buttons to the bottom
+        r.grid_rowconfigure(14, weight=1)
+        
         # Buttons
         ctk.CTkFrame(r,fg_color=P["border"],height=1).grid(row=14,column=0,sticky="ew",padx=12,pady=8)
         bf=ctk.CTkFrame(r,fg_color="transparent"); bf.grid(row=15,column=0,sticky="ew",padx=14)
@@ -250,7 +316,7 @@ class App(ctk.CTk):
             if d.get("isLoopbackDevice",False) and d["maxInputChannels"]>0:
                 self._loops[d["name"]]={"index":i,"name":d["name"],"channels":d["maxInputChannels"],"rate":int(d["defaultSampleRate"])}
             elif not d.get("isLoopbackDevice",False) and d["maxInputChannels"]>0:
-                if "cable output" in nl or FELIXX.lower() in nl: continue
+                if "cable output" in nl or SONIXX.lower() in nl: continue
                 self._mics[d["name"]]={"index":i,"name":d["name"],"channels":d["maxInputChannels"],"rate":int(d["defaultSampleRate"])}
         mn=list(self._mics.keys()) or ["No mics"]; ln=list(self._loops.keys()) or ["No loopback"]
         self.mic_cb.configure(values=mn); self.mic_var.set(mn[0])
@@ -326,7 +392,7 @@ class App(ctk.CTk):
         self.status_lbl.configure(text="● Routing",text_color=P["green"])
         self.start_btn.configure(state="disabled",fg_color=P["card2"])
         self.stop_btn.configure(state="normal",fg_color=P["red"])
-        self.foot.configure(text=f"Routing → {FELIXX}")
+        self.foot.configure(text=f"Routing → {SONIXX}")
         self._update_peaks()
 
     def _stop(self):
@@ -342,7 +408,7 @@ class App(ctk.CTk):
         if self.router.master_mute: self.mute_btn.configure(text="🔊 Unmute",fg_color=P["red_d"],text_color=P["red"])
         else: self.mute_btn.configure(text="🔇 Mute",fg_color=P["card2"],text_color=P["dim"])
     def _rename(self):
-        ok,msg=rename_to_felixx()
+        ok,msg=rename_to_sonixx()
         self.rename_btn.configure(text=f"{'✓' if ok else '✕'} {msg}",text_color=P["green"] if ok else P["orange"])
 
     def _update_peaks(self):

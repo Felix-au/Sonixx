@@ -1,6 +1,6 @@
 # Sonixx by Felix-au — Virtual Audio Router Guide
 
-Sonixx by Felix-au is a high-performance virtual audio router that allows you to capture audio from individual applications and microphones, mixing them into a single virtual microphone output.
+Sonixx is a high-performance virtual audio router that allows you to capture audio from individual applications and microphones, mixing them into a single virtual microphone output.
 
 ## 🚀 How to Run (Development)
 
@@ -25,9 +25,9 @@ To create a standalone Windows executable using the provided spec file:
 
 1. Build using PyInstaller through uv:
    ```bash
-   uv run pyinstaller Sonixx by Felix-auAudioRouter.spec --noconfirm
+   uv run pyinstaller SonixxAudioRouter.spec --noconfirm
    ```
-2. The finished executable will be located in the `dist/Sonixx by Felix-auAudioRouter/` directory.
+2. The finished executable will be located in the `dist/SonixxAudioRouter/` directory.
 
 ## 🛠 Features
 
@@ -39,5 +39,5 @@ To create a standalone Windows executable using the provided spec file:
 ## ⚠️ Important Notes
 
 - **VB-Cable**: The app requires the VB-Cable driver. If not found, the app will offer to download and install it for you.
-- **Admin Rights**: Required for renaming the virtual device to "Sonixx by Felix-au" and for certain system-level audio hooks.
+- **Admin Rights**: Required for renaming the virtual device to "Sonixx" and for certain system-level audio hooks.
 - **Scanning**: Clicking "Scan" will briefly stop the audio router to ensure a clean capture of new application processes.

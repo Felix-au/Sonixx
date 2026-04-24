@@ -1,6 +1,6 @@
 @echo off
 echo ============================================
-echo   Felixx - Virtual Audio Router Setup
+echo   Sonixx - Virtual Audio Router Setup
 echo ============================================
 echo.
 
@@ -19,7 +19,7 @@ if %errorlevel% neq 0 (
     exit /b 1
 )
 
-echo [2/2] Launching Felixx...
+echo [2/2] Launching Sonixx...
 echo.
 uv run main.py
 pause
