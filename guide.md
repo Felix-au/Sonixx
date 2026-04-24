@@ -33,7 +33,7 @@ To create a standalone Windows executable using the provided spec file:
 
 - **Per-App Capture**: Mix audio from specific games, browsers, or music players without capturing system-wide sounds.
 - **Jitter Buffering**: Implements hardware-synced mixing and 210ms buffering for glitch-free, high-fidelity audio.
-- **Monitor Mix**: A toggle to hear exactly what is being sent to the virtual microphone through your own headphones.
+- **Loopback**: A toggle to hear exactly what is being sent to the virtual microphone through your own headphones.
 - **Mono-to-Stereo**: Automatically up-mixes mono microphones to stereo for consistent quality.
 
 ## ⚠️ Important Notes

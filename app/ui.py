@@ -7,7 +7,9 @@ from app.driver import (is_cable_installed, get_cable_output_device, download_vb
                          extract_and_install, rename_to_sonixx, find_wasapi, SONIXX, SONIXX_FULL)
 from app.audio_router import AudioRouter
 from process_audio_capture import ProcessAudioCapture
-import sys
+import sys, json
+import keyboard
+from pystray import Icon, Menu, MenuItem
 
 def resource_path(relative_path):
     """ Get absolute path to resource, works for dev and for PyInstaller """
@@ -22,6 +24,8 @@ P = {"bg":"#080810","card":"#101018","card2":"#181824","hover":"#222236",
      "sel":"#1c1c3c","accent":"#7c6cf0","accent2":"#a99dff",
      "green":"#00d9a3","green_d":"#0a4a3a","red":"#f04040","red_d":"#401818",
      "orange":"#f0a030","txt":"#eaeaf4","dim":"#8080a0","muted":"#505068","border":"#282840"}
+
+SETTINGS_FILE = os.path.join(os.getenv("APPDATA", "."), "Sonixx", "settings.json")
 
 FRIENDLY={"chrome.exe":"Google Chrome","msedge.exe":"Microsoft Edge","firefox.exe":"Firefox",
 "spotify.exe":"Spotify","discord.exe":"Discord","brave.exe":"Brave","vlc.exe":"VLC",
@@ -70,6 +74,14 @@ class SourceRow(ctk.CTkFrame):
             c=P["green"] if level<0.7 else (P["orange"] if level<0.9 else P["red"])
             self.peak_cv.create_rectangle(0,0,bw,8,fill=c,outline="")
 
+    def animate_in(self):
+        self.configure(height=0)
+        def step(h):
+            if h < 46:
+                self.configure(height=h+4)
+                self.after(10, lambda: step(h+4))
+        step(0)
+
 class App(ctk.CTk):
     def __init__(self):
         super().__init__()
@@ -99,9 +111,9 @@ class App(ctk.CTk):
 
         # Load profile icons
         try:
-            gh_img = Image.open(resource_path("assets/github.svg"))
+            gh_img = Image.open(resource_path("assets/github.png"))
             self.gh_icon = ctk.CTkImage(gh_img, size=(18, 18))
-            em_img = Image.open(resource_path("assets/email.svg"))
+            em_img = Image.open(resource_path("assets/email.png"))
             self.em_icon = ctk.CTkImage(em_img, size=(18, 18))
         except:
             self.gh_icon = self.em_icon = None
@@ -123,13 +135,57 @@ class App(ctk.CTk):
             self.logo_img = ctk.CTkImage(Image.open(resource_path("assets/sonixx_logo.png")), size=(24, 24))
         except:
             self.logo_img = None
-
+        self._load_settings()
         self.pa = pyaudio.PyAudio(); self.wi = find_wasapi(self.pa)
         self.router = AudioRouter(self.pa)
         self.mic_rows={}; self.app_rows={}
         self._running=False; self._peak_job=None
+        
+        # Hotkey setup
+        try:
+            keyboard.add_hotkey('ctrl+alt+m', self._mute_toggle_hotkey)
+        except: pass
+
+        self.protocol("WM_DELETE_WINDOW", self._on_window_close)
+        
         if is_cable_installed(self.pa): self._build_main()
         else: self._build_setup()
+
+    def _load_settings(self):
+        os.makedirs(os.path.dirname(SETTINGS_FILE), exist_ok=True)
+        if os.path.exists(SETTINGS_FILE):
+            try:
+                with open(SETTINGS_FILE, "r") as f: self.settings = json.load(f)
+            except: self.settings = {"tray": True, "startup": False}
+        else: self.settings = {"tray": True, "startup": False}
+
+    def _save_settings(self):
+        with open(SETTINGS_FILE, "w") as f: json.dump(self.settings, f)
+
+    def _mute_toggle_hotkey(self):
+        self.after(0, self._mute)
+
+    def _on_window_close(self):
+        if self.settings.get("tray"):
+            self.withdraw()
+            self._show_tray()
+        else:
+            self.on_close()
+
+    def _show_tray(self):
+        if hasattr(self, "_tray_icon") and self._tray_icon: return
+        try:
+            img = Image.open(resource_path("assets/sonixx_logo.png"))
+            menu = Menu(MenuItem("Restore", self._restore_from_tray), MenuItem("Exit", self.on_close))
+            self._tray_icon = Icon("Sonixx", img, "Sonixx", menu)
+            threading.Thread(target=self._tray_icon.run, daemon=True).start()
+        except: pass
+
+    def _restore_from_tray(self):
+        if self._tray_icon:
+            self._tray_icon.stop()
+            self._tray_icon = None
+        self.after(0, self.deiconify)
 
     def _build_setup(self):
         for w in self.winfo_children(): w.destroy()
@@ -263,32 +319,51 @@ class App(ctk.CTk):
         self.loop_cb.grid(row=6,column=0,sticky="ew",padx=16,pady=(0,4))
         ctk.CTkLabel(r,text="ℹ Captures all audio from this output device",font=("Segoe UI",9),
                      text_color=P["muted"]).grid(row=7,column=0,sticky="w",padx=20,pady=(0,6))
-        # Monitor Mix Toggle
+        # Loopback & Settings
         ctk.CTkFrame(r,fg_color=P["border"],height=1).grid(row=8,column=0,sticky="ew",padx=12,pady=4)
-        self.monitor_switch = ctk.CTkSwitch(r, text="Monitor Mix (Hear output)", font=("Segoe UI", 11), text_color=P["dim"],
+        lsf=ctk.CTkFrame(r,fg_color="transparent"); lsf.grid(row=9,column=0,sticky="ew",padx=18,pady=(6,2))
+        
+        self.monitor_switch = ctk.CTkSwitch(lsf, text="Monitor Mix (Hear output)", font=("Segoe UI", 11), text_color=P["dim"],
                                              progress_color=P["accent"], button_color="#fff", button_hover_color="#ddd",
                                              command=self._toggle_monitor)
-        self.monitor_switch.grid(row=9, column=0, sticky="w", padx=18, pady=(6, 2))
+        self.monitor_switch.pack(side="left")
+        
+        self.start_sw = ctk.CTkSwitch(lsf, text="Auto-start", font=("Segoe UI", 11), text_color=P["dim"],
+                                      command=self._save_settings_ui)
+        self.start_sw.pack(side="right")
+        if self.settings.get("startup"): self.start_sw.select()
 
-        # Master vol
+        self.tray_sw = ctk.CTkSwitch(lsf, text="Minimize to Tray", font=("Segoe UI", 11), text_color=P["dim"],
+                                     command=self._save_settings_ui)
+        self.tray_sw.pack(side="right", padx=(0, 4))
+        if self.settings.get("tray"): self.tray_sw.select()
+
+        # Master vol & Mute
         ctk.CTkFrame(r,fg_color=P["border"],height=1).grid(row=10,column=0,sticky="ew",padx=12,pady=4)
-        ctk.CTkLabel(r,text="Master Volume",font=("Segoe UI",11),text_color=P["dim"]).grid(row=11,column=0,sticky="w",padx=18,pady=(4,2))
+        ctk.CTkLabel(r,text="Master Control",font=("Segoe UI",11),text_color=P["dim"]).grid(row=11,column=0,sticky="w",padx=18,pady=(4,2))
         mvf=ctk.CTkFrame(r,fg_color="transparent"); mvf.grid(row=12,column=0,sticky="ew",padx=18); mvf.grid_columnconfigure(0,weight=1)
+        
         self.m_slider=ctk.CTkSlider(mvf,from_=0,to=200,number_of_steps=200,fg_color=P["card2"],
                                      progress_color=P["accent"],button_color=P["accent2"],button_hover_color="#fff",command=self._mvol)
         self.m_slider.set(100); self.m_slider.grid(row=0,column=0,sticky="ew")
         self.m_lbl=ctk.CTkLabel(mvf,text="100%",width=40,font=("Segoe UI",11),text_color=P["dim"])
         self.m_lbl.grid(row=0,column=1,padx=(6,0))
+        
+        self.master_mute_btn = ctk.CTkButton(mvf, text="🔊", width=32, height=32, font=("Segoe UI", 14),
+                                            fg_color=P["card2"], hover_color=P["hover"], corner_radius=8, command=self._mute)
+        self.master_mute_btn.grid(row=0, column=2, padx=(8, 0))
+
         # Peak
         self.m_peak=ctk.CTkCanvas(r,height=10,bg=P["card"],highlightthickness=0)
         self.m_peak.grid(row=13,column=0,sticky="ew",padx=18,pady=(8,4))
         
+
         # Spacer to push buttons to the bottom
-        r.grid_rowconfigure(14, weight=1)
+        r.grid_rowconfigure(16, weight=1)
         
         # Buttons
-        ctk.CTkFrame(r,fg_color=P["border"],height=1).grid(row=14,column=0,sticky="ew",padx=12,pady=8)
-        bf=ctk.CTkFrame(r,fg_color="transparent"); bf.grid(row=15,column=0,sticky="ew",padx=14)
+        ctk.CTkFrame(r,fg_color=P["border"],height=1).grid(row=16,column=0,sticky="ew",padx=12,pady=8)
+        bf=ctk.CTkFrame(r,fg_color="transparent"); bf.grid(row=17,column=0,sticky="ew",padx=14)
         bf.grid_columnconfigure(0,weight=1); bf.grid_columnconfigure(1,weight=1)
         self.start_btn=ctk.CTkButton(bf,text="▶ Start",height=40,font=("Segoe UI Semibold",13),
                                       fg_color=P["accent"],hover_color=P["accent2"],corner_radius=10,command=self._start)
@@ -296,9 +371,6 @@ class App(ctk.CTk):
         self.stop_btn=ctk.CTkButton(bf,text="■ Stop",height=40,font=("Segoe UI Semibold",13),
                                      fg_color=P["red_d"],hover_color=P["red"],corner_radius=10,command=self._stop,state="disabled")
         self.stop_btn.grid(row=0,column=1,sticky="ew",padx=(4,0))
-        self.mute_btn=ctk.CTkButton(r,text="🔇 Mute",height=32,font=("Segoe UI",12),fg_color=P["card2"],
-                                     hover_color=P["hover"],text_color=P["dim"],corner_radius=10,command=self._mute)
-        self.mute_btn.grid(row=16,column=0,sticky="ew",padx=14,pady=(8,14))
 
     def _toggle_monitor(self):
         self.router.monitor_enabled = bool(self.monitor_switch.get())
@@ -353,6 +425,7 @@ class App(ctk.CTk):
             row=SourceRow(self.app_scroll,label,"app",on_toggle=self._app_tog,on_vol=self._app_vol,on_rm=self._app_rm)
             row.pid=p.pid; row.source_id=f"app_{p.pid}"
             row.grid(row=i,column=0,sticky="ew",pady=2,padx=4)
+            row.animate_in()
             self.app_rows[p.pid]=row
             self.router.add_app(p)
 
@@ -405,8 +478,18 @@ class App(ctk.CTk):
     def _mvol(self,v): self.router.master_vol=v/100.0; self.m_lbl.configure(text=f"{int(v)}%")
     def _mute(self):
         self.router.master_mute=not self.router.master_mute
-        if self.router.master_mute: self.mute_btn.configure(text="🔊 Unmute",fg_color=P["red_d"],text_color=P["red"])
-        else: self.mute_btn.configure(text="🔇 Mute",fg_color=P["card2"],text_color=P["dim"])
+        if self.router.master_mute: 
+            self.master_mute_btn.configure(text="🔇",fg_color=P["red_d"],text_color=P["red"])
+        else: 
+            self.master_mute_btn.configure(text="🔊",fg_color=P["card2"],text_color=P["dim"])
+    
+    def _save_settings_ui(self):
+        from app.driver import set_startup
+        self.settings["tray"] = bool(self.tray_sw.get())
+        self.settings["startup"] = bool(self.start_sw.get())
+        self._save_settings()
+        set_startup(self.settings["startup"])
+
     def _rename(self):
         ok,msg=rename_to_sonixx()
         self.rename_btn.configure(text=f"{'✓' if ok else '✕'} {msg}",text_color=P["green"] if ok else P["orange"])

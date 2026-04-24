@@ -121,3 +121,29 @@ def rename_to_sonixx():
         return False, "Run as Administrator to rename"
     except Exception as e:
         return False, str(e)
+
+
+def set_startup(enabled=True):
+    """Enable or disable 'Start with Windows' for Sonixx."""
+    key_path = r"Software\Microsoft\Windows\CurrentVersion\Run"
+    app_name = "Sonixx"
+    try:
+        # Get current executable path
+        if getattr(sys, 'frozen', False):
+            exe_path = sys.executable
+        else:
+            exe_path = os.path.abspath(sys.argv[0])
+            
+        key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, key_path, 0, winreg.KEY_SET_VALUE)
+        if enabled:
+            winreg.SetValueEx(key, app_name, 0, winreg.REG_SZ, f'"{exe_path}"')
+        else:
+            try:
+                winreg.DeleteValue(key, app_name)
+            except FileNotFoundError:
+                pass
+        winreg.CloseKey(key)
+        return True
+    except Exception as e:
+        print(f"[Driver] Startup toggle failed: {e}")
+        return False
