@@ -282,7 +282,7 @@ class App(ctk.CTk):
         self.app_empty.grid(row=0,column=0,pady=20)
         # Mic section
         mb=ctk.CTkFrame(left,fg_color="transparent"); mb.grid(row=2,column=0,sticky="ew",padx=14,pady=(8,4))
-        mb.grid_columnconfigure(0,weight=1)
+        mb.grid_columnconfigure(1,weight=1)
         ctk.CTkLabel(mb,text="🎤 Microphones",font=("Segoe UI Semibold",14),text_color=P["txt"]).grid(row=0,column=0,sticky="w")
         self.mic_var=ctk.StringVar()
         self.mic_cb=ctk.CTkComboBox(mb,variable=self.mic_var,values=["..."],height=28,font=("Segoe UI",11),
