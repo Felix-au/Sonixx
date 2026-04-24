@@ -127,16 +127,20 @@ def set_startup(enabled=True):
     """Enable or disable 'Start with Windows' for Sonixx."""
     key_path = r"Software\Microsoft\Windows\CurrentVersion\Run"
     app_name = "Sonixx"
+    
     try:
         # Get current executable path
         if getattr(sys, 'frozen', False):
             exe_path = sys.executable
+            reg_val = f'"{exe_path}"'
         else:
-            exe_path = os.path.abspath(sys.argv[0])
+            python_exe = sys.executable
+            script_path = os.path.abspath(sys.argv[0])
+            reg_val = f'"{python_exe}" "{script_path}"'
             
         key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, key_path, 0, winreg.KEY_SET_VALUE)
         if enabled:
-            winreg.SetValueEx(key, app_name, 0, winreg.REG_SZ, f'"{exe_path}"')
+            winreg.SetValueEx(key, app_name, 0, winreg.REG_SZ, reg_val)
         else:
             try:
                 winreg.DeleteValue(key, app_name)

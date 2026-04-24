@@ -166,7 +166,8 @@ class App(ctk.CTk):
         self.after(0, self._mute)
 
     def _on_window_close(self):
-        if self.settings.get("tray"):
+        is_tray = self.settings.get("tray", True)
+        if is_tray:
             self.withdraw()
             self._show_tray()
         else:
@@ -175,11 +176,22 @@ class App(ctk.CTk):
     def _show_tray(self):
         if hasattr(self, "_tray_icon") and self._tray_icon: return
         try:
-            img = Image.open(resource_path("assets/sonixx_logo.png"))
-            menu = Menu(MenuItem("Restore", self._restore_from_tray), MenuItem("Exit", self.on_close))
+            icon_p = resource_path("assets/sonixx_logo.ico")
+            if not os.path.exists(icon_p):
+                icon_p = resource_path("assets/sonixx_logo.png")
+            
+            if not os.path.exists(icon_p):
+                img = Image.new('RGB', (64, 64), color = (124, 108, 240))
+            else:
+                img = Image.open(icon_p)
+
+            menu = Menu(MenuItem("Restore", self._restore_from_tray, default=True), MenuItem("Exit", self.on_close))
             self._tray_icon = Icon("Sonixx", img, "Sonixx", menu)
-            threading.Thread(target=self._tray_icon.run, daemon=True).start()
-        except: pass
+            
+            t = threading.Thread(target=self._tray_icon.run, daemon=True)
+            t.start()
+        except Exception as e:
+            print(f"[UI] Tray icon failed: {e}")
 
     def _restore_from_tray(self):
         if self._tray_icon:
