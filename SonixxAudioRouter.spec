@@ -1,7 +1,7 @@
 # -*- mode: python ; coding: utf-8 -*-
 from PyInstaller.utils.hooks import collect_all
 
-datas = [('assets', 'assets')]
+datas = [('assets', 'assets'), ('VBCABLE_Driver_Pack45.zip', '.')]
 binaries = []
 hiddenimports = []
 tmp_ret = collect_all('customtkinter')

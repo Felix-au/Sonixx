@@ -3,8 +3,8 @@ import customtkinter as ctk
 import threading, time, webbrowser, os
 import pyaudiowpatch as pyaudio
 from PIL import Image
-from app.driver import (is_cable_installed, get_cable_output_device, download_vbcable,
-                         extract_and_install, rename_to_sonixx, find_wasapi, SONIXX, SONIXX_FULL)
+from app.driver import (is_cable_installed, get_cable_output_device, silent_install_vbcable,
+                         rename_to_sonixx, find_wasapi, SONIXX, SONIXX_FULL)
 from app.audio_router import AudioRouter
 from process_audio_capture import ProcessAudioCapture
 import sys, json
@@ -204,24 +204,28 @@ class App(ctk.CTk):
         f=ctk.CTkFrame(self,fg_color=P["card"],corner_radius=20,border_width=1,border_color=P["border"])
         f.place(relx=0.5,rely=0.5,anchor="center",relwidth=0.6,relheight=0.55)
         ctk.CTkLabel(f,text=f"◉ {SONIXX} Setup",font=("Segoe UI Black",24),text_color=P["accent2"]).pack(pady=(30,10))
-        ctk.CTkLabel(f,text="A lightweight audio driver (VB-Cable, 2MB, free) is required\nto create the virtual microphone device.",
+        ctk.CTkLabel(f,text="A lightweight audio driver (VB-Cable) is required\nto create the virtual microphone device.\nIt will be installed automatically.",
                      font=("Segoe UI",13),text_color=P["dim"],justify="center").pack(pady=(0,20))
         self.setup_st=ctk.CTkLabel(f,text="",font=("Segoe UI",12),text_color=P["orange"]); self.setup_st.pack(pady=(0,10))
-        ctk.CTkButton(f,text="⬇ Download & Install VB-Cable",height=44,font=("Segoe UI Semibold",14),
-                       fg_color=P["accent"],hover_color=P["accent2"],corner_radius=12,command=self._do_install).pack(padx=40,fill="x")
-        ctk.CTkButton(f,text="🔗 Or download from vb-audio.com",height=32,font=("Segoe UI",11),
-                       fg_color="transparent",hover_color=P["hover"],text_color=P["dim"],
-                       command=lambda:webbrowser.open("https://vb-audio.com/Cable/")).pack(padx=40,pady=(8,4),fill="x")
+        self.install_btn=ctk.CTkButton(f,text="⚡ Install VB-Cable Driver",height=44,font=("Segoe UI Semibold",14),
+                       fg_color=P["accent"],hover_color=P["accent2"],corner_radius=12,command=self._do_install)
+        self.install_btn.pack(padx=40,fill="x")
         ctk.CTkButton(f,text="⟳ Already installed — Refresh",height=32,font=("Segoe UI",11),
                        fg_color=P["card2"],hover_color=P["hover"],text_color=P["dim"],corner_radius=8,
                        command=self._chk_install).pack(padx=40,pady=(8,20),fill="x")
 
     def _do_install(self):
-        self.setup_st.configure(text="Downloading...",text_color=P["orange"]); self.update()
+        self.install_btn.configure(state="disabled",fg_color=P["card2"])
+        self.setup_st.configure(text="Installing driver... please wait.",text_color=P["orange"]); self.update()
         def w():
-            import tempfile; zp=download_vbcable(tempfile.mkdtemp())
-            if zp: extract_and_install(zp); self.after(0,lambda:self.setup_st.configure(text="Installer launched — click Install Driver, then Refresh.",text_color=P["green"]))
-            else: self.after(0,lambda:self.setup_st.configure(text="Download failed.",text_color=P["red"]))
+            ok, msg = silent_install_vbcable()
+            if ok:
+                self.after(0, lambda: self.setup_st.configure(text=f"✓ {msg}",text_color=P["green"]))
+                # Auto-refresh after a short delay for the driver to register
+                self.after(2000, self._chk_install)
+            else:
+                self.after(0, lambda: self.setup_st.configure(text=f"✕ {msg}",text_color=P["red"]))
+                self.after(0, lambda: self.install_btn.configure(state="normal",fg_color=P["accent"]))
         threading.Thread(target=w,daemon=True).start()
 
     def _chk_install(self):

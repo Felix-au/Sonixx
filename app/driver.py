@@ -44,25 +44,34 @@ def get_cable_output_device(pa):
     return None
 
 
-def download_vbcable(dest_dir):
-    """Download VB-Cable zip to dest_dir. Returns path to zip or None."""
-    zip_path = os.path.join(dest_dir, "VBCABLE.zip")
+def _get_bundled_zip():
+    """Locate the VB-Cable zip bundled inside the application."""
+    # When frozen (PyInstaller), the zip lives in sys._MEIPASS
+    # When running from source, it lives in the project root
     try:
-        print("[Driver] Downloading VB-Cable...")
-        urllib.request.urlretrieve(VB_URL, zip_path)
+        base = sys._MEIPASS
+    except AttributeError:
+        base = os.path.abspath(".")
+    zip_path = os.path.join(base, "VBCABLE_Driver_Pack45.zip")
+    if os.path.exists(zip_path):
         return zip_path
+    return None
+
+
+def silent_install_vbcable():
+    """Extract bundled VB-Cable zip and install silently. Returns (success, message)."""
+    zip_path = _get_bundled_zip()
+    if not zip_path:
+        return False, "Bundled driver zip not found."
+
+    extract_dir = os.path.join(tempfile.mkdtemp(), "VBCABLE")
+    try:
+        with zipfile.ZipFile(zip_path, 'r') as z:
+            z.extractall(extract_dir)
     except Exception as e:
-        print(f"[Driver] Download failed: {e}")
-        return None
+        return False, f"Failed to extract driver: {e}"
 
-
-def extract_and_install(zip_path):
-    """Extract and launch installer (needs admin)."""
-    extract_dir = os.path.join(os.path.dirname(zip_path), "VBCABLE")
-    with zipfile.ZipFile(zip_path, 'r') as z:
-        z.extractall(extract_dir)
-
-    # Find the 64-bit installer
+    # Find the 64-bit setup exe (preferred), fallback to 32-bit
     exe = None
     for f in os.listdir(extract_dir):
         if "setup" in f.lower() and "x64" in f.lower() and f.endswith(".exe"):
@@ -73,11 +82,21 @@ def extract_and_install(zip_path):
             if "setup" in f.lower() and f.endswith(".exe"):
                 exe = os.path.join(extract_dir, f)
                 break
-    if exe:
-        print(f"[Driver] Launching installer: {exe}")
-        subprocess.Popen(["cmd", "/c", "start", "", exe], shell=True)
-        return True
-    return False
+    if not exe:
+        return False, "Setup executable not found in driver pack."
+
+    # Run the installer silently: -i = install, -h = hide (no GUI)
+    print(f"[Driver] Silent-installing VB-Cable: {exe}")
+    try:
+        result = subprocess.run([exe, "-i", "-h"], capture_output=True, timeout=60)
+        if result.returncode == 0:
+            return True, "VB-Cable installed successfully."
+        else:
+            return True, "VB-Cable installer finished (may need reboot)."
+    except subprocess.TimeoutExpired:
+        return False, "Driver install timed out."
+    except Exception as e:
+        return False, f"Install error: {e}"
 
 
 def rename_to_sonixx():
