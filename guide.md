@@ -27,7 +27,7 @@ To create a standalone Windows executable using the provided spec file:
    ```bash
    uv run pyinstaller SonixxAudioRouter.spec --noconfirm
    ```
-2. The finished executable will be located in the `dist/SonixxAudioRouter/` directory.
+2. The finished executable will be located at `dist/SonixxAudioRouter.exe` (single-file, batteries-included — the VB-Cable driver is bundled inside).
 
 ## 🛠 Features
 
@@ -38,6 +38,6 @@ To create a standalone Windows executable using the provided spec file:
 
 ## ⚠️ Important Notes
 
-- **VB-Cable**: The app requires the VB-Cable driver. If not found, the app will offer to download and install it for you.
+- **VB-Cable**: The app requires the VB-Cable driver. If not found, the app will silently install it from the bundled `VBCABLE_Driver_Pack45.zip` — no internet download required.
 - **Admin Rights**: Required for renaming the virtual device to "Sonixx" and for certain system-level audio hooks.
 - **Scanning**: Clicking "Scan" will briefly stop the audio router to ensure a clean capture of new application processes.
