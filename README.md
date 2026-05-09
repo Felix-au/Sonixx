@@ -94,30 +94,30 @@ If you've ever wanted to share a YouTube video's audio in a call, play your Spot
 ┌──────────────────────────────────────────────────────┐
 │                   Sonixx Application                 │
 │                                                      │
-│  ┌────────────┐   ┌────────────┐   ┌──────────────┐ │
-│  │ App Source  │   │ App Source  │   │  Mic Source   │ │
-│  │ (Chrome)   │   │ (Spotify)  │   │  (Realtek)   │ │
-│  │            │   │            │   │              │ │
-│  │ Named Pipe │   │ Named Pipe │   │ WASAPI Input │ │
-│  │ + PAC DLL  │   │ + PAC DLL  │   │ (Callback)   │ │
-│  └─────┬──────┘   └─────┬──────┘   └──────┬───────┘ │
+│  ┌────────────┐   ┌────────────┐   ┌──────────────┐  │
+│  │ App Source  │   │ App Source  │   │  Mic Source│  │
+│  │ (Chrome)   │   │ (Spotify)  │   │  (Realtek)   │  │
+│  │            │   │            │   │              │  │
+│  │ Named Pipe │   │ Named Pipe │   │ WASAPI Input │  │
+│  │ + PAC DLL  │   │ + PAC DLL  │   │ (Callback)   │  │
+│  └─────┬──────┘   └─────┬──────┘   └──────┬───────┘  │
 │        │                │                  │         │
 │        └────────┬───────┘                  │         │
 │                 │                          │         │
 │           ┌─────▼──────────────────────────▼───┐     │
 │           │       AudioRouter._out_cb()        │     │
-│           │   (Hardware-synced WASAPI callback) │     │
+│           │   (Hardware-synced WASAPI callback)│     │
 │           │                                    │     │
 │           │  Mix all sources → master vol/mute │     │
 │           │  → clip to [-1.0, 1.0]             │     │
 │           └────────┬───────────────┬───────────┘     │
 │                    │               │                 │
-│            ┌───────▼───┐   ┌───────▼──────┐         │
-│            │ VB-Cable  │   │   Monitor    │         │
-│            │  Output   │   │  (Loopback)  │         │
-│            │ (Virtual  │   │  Headphones  │         │
-│            │   Mic)    │   │              │         │
-│            └───────────┘   └──────────────┘         │
+│            ┌───────▼───┐   ┌───────▼──────┐          │
+│            │ VB-Cable  │   │   Monitor    │          │
+│            │  Output   │   │  (Loopback)  │          │
+│            │ (Virtual  │   │  Headphones  │          │ 
+│            │   Mic)    │   │              │          │
+│            └───────────┘   └──────────────┘          │
 └──────────────────────────────────────────────────────┘
 ```
 
