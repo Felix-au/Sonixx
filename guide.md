@@ -2,6 +2,10 @@
 
 Sonixx is a high-performance virtual audio router that allows you to capture audio from individual applications and microphones, mixing them into a single virtual microphone output.
 
+> [!IMPORTANT]
+> **Unlike every soundboard on the market** (Voicemod, Soundpad, Resanance, etc.) which only play pre-downloaded MP3/WAV files, Sonixx routes **live audio** between running applications in real-time. No file downloads, no manual recording — just pick any app and its audio goes straight to your virtual mic.
+
+
 ## 🚀 How to Run (Development)
 
 To run the application from source code using the **uv** package manager:

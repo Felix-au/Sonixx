@@ -20,6 +20,7 @@
 ## 📋 Table of Contents
 
 - [Overview](#-overview)
+- [Why Sonixx?](#-why-sonixx)
 - [Features](#-features)
 - [Architecture](#-architecture)
 - [Prerequisites](#-prerequisites)
@@ -42,6 +43,26 @@
 > **Use-case example:** You're in a Discord or VALORANT voice call and want to play background music from Spotify *and* your mic simultaneously — Sonixx makes that seamless with per-source volume controls, muting, and real-time peak metering.
 
 The entire stack runs locally with zero cloud dependencies — no accounts, no telemetry, no latency overhead.
+
+---
+
+## 🎯 Why Sonixx?
+
+> **There is not a single soundboard on the market that routes live audio between applications.**
+
+Every existing "soundboard" — Voicemod, Soundpad, EXP Soundboard, Resanance, you name it — works the same way: you load **pre-downloaded MP3/WAV files** and trigger them with hotkeys. They are glorified audio-file players wired to a virtual mic.
+
+Sonixx is fundamentally different:
+
+| | Traditional Soundboards | Sonixx |
+|---|---|---|
+| **Audio source** | Pre-downloaded `.mp3` / `.wav` files | **Live audio** from any running application |
+| **How it works** | Plays a static file to a virtual mic | Captures real-time audio streams via Windows WASAPI per-process loopback and mixes them on-the-fly |
+| **Use case** | Sound effects, memes, pre-recorded clips | Stream Spotify, browser audio, game sounds, or *any* app's live output directly into Discord/Zoom/OBS — alongside your mic |
+| **Per-app control** | ❌ N/A | ✅ Independent volume, mute, and enable per process |
+| **Mic passthrough** | ❌ Separate tool needed | ✅ Built-in — mix your mic with app audio in one pipeline |
+
+If you've ever wanted to share a YouTube video's audio in a call, play your Spotify playlist through your mic in VALORANT, or route a DAW's output into OBS — without manually recording and re-uploading files — Sonixx is the tool that finally makes it possible.
 
 ---
 
